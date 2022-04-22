@@ -60,18 +60,16 @@ class ListSupportedCountries(Command):
     list
     """
     def handle(self):  # type: () -> Optional[int]
+        self.write('List of supported countries:\n')
         for iso, country in list_countries().items():
-            regions = list_country_regions(country)
-
-            for region in regions:
-                print(region)
+            self.write(f'{iso}: {country.name}\n')
 
 
-class ListSupportedRegions(Command):
+class ListSupportedDatasets(Command):
     """
-    Shows a list of supported regions for a country with a supported waste water dataset
+    Shows a list of supported datasets for a country with waste water datasets
 
-    regions
+    datasets
         {country : ISO Alpha-3 name of the country as listed by the list-command}
     """
 
@@ -83,6 +81,8 @@ class ListSupportedRegions(Command):
         if country is None or len(country) != 3 or country.upper() not in valid_countries:
             self.line(f'<error>Error:</error> country {country} not supported, use one of: {", ".join(valid_countries)}')
             return
+
+        country = country.upper()
 
         regions = list_country_regions(country)
 
@@ -97,6 +97,8 @@ class GetRegionData(Command):
     get
         {country : ISO Alpha-3 name of the country as listed by the list-command}
         {region : Region name of the country as listed by the regions-command}
+        {outdir : Directory for storing the data}
+        {--format= : Either xlsx, json or csv (default)}
         {--no-cache : Do not use cache}
         {--cache-type= : Override config cache type, choose one of remote, local, none}
         {--c|cache-dir= : Set cache dir for local cache}
@@ -105,12 +107,27 @@ class GetRegionData(Command):
     def handle(self):  # type: () -> Optional[int]
         country = self.argument('country')
         region = self.argument('region')
+        outdir = Path(self.argument('outdir'))
+
+        if not outdir.is_dir():
+            self.line_error(f'Directory {outdir.absolute()} does not exist')
+            return 100
+
+        if self.option('format'):
+            format = self.option('format').lower().strip()
+            valid_output_formats = ('xlsx', 'json', 'csv')
+            if format not in valid_output_formats:
+                self.line_error(f'Output format {format} does not exist, choose one of {", ".join(valid_output_formats)}')
+                return 200
+        else:
+            format = 'csv'
 
         if self.option('cache-type'):
             cache_type = self.option('cache-type').lower().strip()
             valid_types = ['remote', 'local', 'none']
             if cache_type not in valid_types:
                 self.write(f'<error>Error:</error> --cache-type={cache_type} invalid, choose one of: {", ".join(valid_types)}')
+                return 300
 
         if self.option('no-cache'):
             config['cache'] = None
@@ -122,12 +139,23 @@ class GetRegionData(Command):
 
         if country is None or len(country) != 3 or country.upper() not in valid_countries:
             self.line(f'<error>Error:</error> country {country} not supported, use one of: {", ".join(valid_countries)}')
-            return
+            return 400
 
         if not is_valid_region(country, region):
             self.line(f'<error>Error:</error> region {region} not supported, use one of: {", ".join(get_valid_regions(country))}')
+            return 500
 
-        print(get_region_data_for_country(country, region))
+        df = get_region_data_for_country(country, region)
+
+        if format == 'csv':
+            filename = outdir / f'{country}_{region}.csv'
+            df.to_csv(filename, index=True)
+        elif format == 'xlsx':
+            filename = outdir / f'{country}_{region}.xlsx'
+            df.to_excel(filename, sheet_name=f'{country}_{region}')
+        elif format == 'json':
+            filename = outdir / f'{country}_{region}.json'
+            df.to_json(filename, orient='index')
 
 
 def run():
@@ -143,7 +171,7 @@ def run():
 
     application.add(Config())
     application.add(ListSupportedCountries())
-    application.add(ListSupportedRegions())
+    application.add(ListSupportedDatasets())
     application.add(GetRegionData())
 
     application.run()

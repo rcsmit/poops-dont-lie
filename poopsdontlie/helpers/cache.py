@@ -1,9 +1,14 @@
 import functools
+import inspect
+
 import pandas as pd
 import pickle
 import urllib.parse
-import inspect
 
+import requests
+from requests import HTTPError
+
+from tqdm.auto import tqdm
 from poopsdontlie.helpers import config
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
@@ -13,6 +18,7 @@ from datetime import datetime
 _levels_definition = {
     'backend': {'namespace': 'backend'},
     'apiresult': {'namespace': 'api'},
+    'smoothed_api_result': {'namespace': 'api'}
 }
 levels = [*_levels_definition.keys()]
 
@@ -125,39 +131,13 @@ class NoCache(CacheAdapter):
         return None
 
 
-class RemoteCache(CacheAdapter):
-    def __init__(self, cache_root_url=config['remote_cache_url']):
-        self._root_url = cache_root_url
-        if self._root_url[-1] != '/':
-            self._root_url = f'{self._root_url}/'
-
-    def put(self, key, value, cache_level, invalidate_by=None):
-        # unsupported, this cache is read-only
-        pass
-
-    def get(self, key, cache_level):
-        func, entry = _get_registry_entry_for_key_cache_level(key, cache_level)
-        module = inspect.getmodule(func).__name__.split('.')
-        country = module[module.index('countries') + 1].upper()
-
-        meta_url = f'{self._root_url}{country}/{func.__name__}.meta'
-        csv_url = f'{self._root_url}{country}/{func.__name__}.csv'
-
-    def exists(self, key, cache_level):
-        pass
-
-    def remove(self, key, cache_level):
-        # unsupported, this cache is read-only
-        pass
-
-
 class LocalFilesystemCache(CacheAdapter):
     def exists(self, key, cache_level):
         cachefile = self._genpath(key, cache_level)
 
         return cachefile.is_file()
 
-    def __init__(self, cache_dir=Path(config['cachedir'])):
+    def __init__(self, cache_dir=Path(config['cachedir']) / 'local'):
         self._cdir = cache_dir
         self._cdir.mkdir(parents=True, exist_ok=True)
 
@@ -206,8 +186,123 @@ class LocalFilesystemCache(CacheAdapter):
             cachefile.unlink()
 
 
-def _cache_factory():
-    if hasattr(_cache_factory, '_instance'):
+class RemoteCache(CacheAdapter):
+    def __init__(self, cache_root_url=config['remote_cache_url'], tmpdir=Path(config['cachedir']) / 'remote'):
+        self._root_url = cache_root_url
+        if self._root_url[-1] != '/':
+            self._root_url = f'{self._root_url}/'
+
+        self._tmpdir = tmpdir
+
+    def _http_get_req_file(self, url, outfile):
+        print(f'Downloading {url} to {outfile}')
+        try:
+            with requests.get(url, stream=True) as r:
+                r.raise_for_status()
+                total_size_in_bytes = int(r.headers.get('content-length', 0))
+                progress_bar = tqdm(total=total_size_in_bytes, unit='iB', unit_scale=True)
+                with open(outfile, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        # If you have chunk encoded response uncomment if
+                        # and set chunk_size parameter to None.
+                        # if chunk:
+                        progress_bar.update(len(chunk))
+                        f.write(chunk)
+                progress_bar.close()
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                raise FileNotFoundError(url)
+            raise e
+
+    def put(self, key, value, cache_level, invalidate_by=None):
+        # unsupported, this cache is read-only
+        pass
+
+    def get(self, key, cache_level, ignore_expiredate=False):
+        func, entry = _get_registry_entry_for_key_cache_level(key, cache_level)
+        module = inspect.getmodule(func).__name__.split('.')
+        country = module[module.index('countries') + 1].upper()
+
+        meta_file = f'{func.__name__}.meta'
+        csv_file = f'{func.__name__}.csv'
+
+        meta_url = f'{self._root_url}{country}/{meta_file}'
+        csv_url = f'{self._root_url}{country}/{csv_file}'
+
+        outpath = self._tmpdir / country
+        outpath.mkdir(exist_ok=True, parents=True)
+
+        local_meta_file = outpath / meta_file
+        local_csv_file = outpath / csv_file
+
+        try:
+            self._http_get_req_file(meta_url, local_meta_file)
+        except FileNotFoundError as e:
+            # file does not exist in remote cache
+            print(f'REMOTE CACHE WARN: {meta_url} does not exist')
+            return None
+
+        with open(local_meta_file, 'rb') as fh:
+            meta = pickle.load(fh)
+
+        if not ignore_expiredate and meta['invalidate_after'] < pd.Timestamp.utcnow():
+            print(f'REMOTE CACHE WARN: {meta["invalidate_after"]} < {pd.Timestamp.utcnow()}')
+            return None
+
+        try:
+            self._http_get_req_file(csv_url, local_csv_file)
+        except FileNotFoundError as e:
+            # file does not exist in remote cache
+            print(f'REMOTE CACHE WARN: {csv_url} does not exist')
+            return None
+
+        dtype, parse_dates = self._filter_dtypes(meta['dtypes'])
+        df = pd.read_csv(local_csv_file, index_col=0, dtype=dtype, parse_dates=parse_dates)
+
+        return df
+
+    def _filter_dtypes(self, dtypes):
+        typeret = {}
+        dateret = []
+
+        for k, v in dtypes.items():
+            if 'datetime64[ns]' in str(v):
+                dateret.append(k)
+            else:
+                typeret[k] = v
+
+        return typeret, dateret
+
+    def exists(self, key, cache_level):
+        func, entry = _get_registry_entry_for_key_cache_level(key, cache_level)
+        module = inspect.getmodule(func).__name__.split('.')
+        country = module[module.index('countries') + 1].upper()
+
+        meta_file = f'{func.__name__}.meta'
+        meta_url = f'{self._root_url}{country}/{meta_file}'
+
+        try:
+            r = requests.head(meta_url)
+            r.raise_for_status()
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                return False
+            raise e
+
+        return True
+
+    def remove(self, key, cache_level):
+        # unsupported, this cache is read-only
+        pass
+
+
+
+def reiinit_cache_config():
+    _cache_factory(force_init=True)
+
+
+def _cache_factory(force_init=False):
+    if not force_init and hasattr(_cache_factory, '_instance'):
         if config['cache'] == _cache_factory._impl:
             return _cache_factory._instance
 
@@ -219,6 +314,8 @@ def _cache_factory():
     cache = None
     if cache_impl == 'local':
         cache = LocalFilesystemCache()
+    elif cache_impl == 'remote':
+        cache = RemoteCache()
 
     if cache is None:
         raise ValueError(f'Invalid cache in config: {cache_impl}, try one of: remote, local, none')

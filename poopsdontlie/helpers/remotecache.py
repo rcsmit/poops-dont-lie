@@ -7,7 +7,6 @@ from poopsdontlie.helpers.cache import get_func_invalidate_after
 
 def cache_gen(outdir, force_all=False):
     summary = ''
-    mappings = {}
 
     for iso, country in list_countries().items():
         summary += f'##########################\n{iso}: {country.name}\n##########################\n'
@@ -21,7 +20,7 @@ def cache_gen(outdir, force_all=False):
 
             if not force_all and metafile.is_file():
                 with open(metafile, 'rb') as fh:
-                    print(f'Opening existing cache-file {metafile.name}')
+                    print(f'Opening existing meta-file {metafile.name}')
                     meta = pickle.load(fh)
 
                     if meta['invalidate_after'] > nowutc:
@@ -30,10 +29,11 @@ def cache_gen(outdir, force_all=False):
 
             df = func()
 
-            df.to_csv(countrydir / f'{name}.csv')
+            df_r = df.reset_index()
+            df_r.to_csv(countrydir / f'{name}.csv', index=False)
             with open(metafile, 'wb') as fh:
                 meta = {
-                    'dtypes': df.dtypes.to_dict(),
+                    'dtypes': df_r.dtypes.to_dict(),
                     'invalidate_after': get_func_invalidate_after(name),
                 }
 
