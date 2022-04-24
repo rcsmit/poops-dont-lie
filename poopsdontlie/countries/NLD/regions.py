@@ -4,6 +4,7 @@ from poopsdontlie.helpers import config
 from tqdm.auto import tqdm
 
 import pandas as pd
+import numpy as np
 
 from poopsdontlie.smoothers.lowess import lowess
 
@@ -56,13 +57,22 @@ def rna_flow_per_capita_for_gemeente(jobs=config['n_jobs']):
 
     print('Converting RNA flow per municipality / safety-region to flow per capita')
     for col in tqdm(gmcols):
-        df_gem = df_rwzi_gm_vr[['Date_measurement', col, 'population_attached_to_rwzi']].groupby('Date_measurement').sum()
+        # first select the columns of interest
+        df_sel = df_rwzi_gm_vr[['Date_measurement', col, 'population_attached_to_rwzi']]
+
+        # now divide RNA flow by population number
+        df_sel[col] = df_sel[col] / df_sel['population_attached_to_rwzi']
+
+        # now sum RNA flow per day and divide by number of measurements on that day
+        df_gem = df_sel.groupby('Date_measurement').sum() / df_sel.groupby('Date_measurement').count()
+
+        # join data into result dataframe
         df_gem_rna_flow = df_gem_rna_flow.join(
-            (df_gem[col] / df_gem['population_attached_to_rwzi']).round(0).resample('D').last().rename(f'RNA_flow_per_capita_{col}'),
+            df_gem[col].round(0).resample('D').last().rename(f'RNA_flow_per_capita_{col}'),
             how='outer'
         )
 
-    return df_gem_rna_flow.round(0).astype(pd.Int64Dtype())
+    return df_gem_rna_flow.round(0).replace(0, np.nan).astype(pd.Int64Dtype())
 
 
 @cached_results(

@@ -16,22 +16,6 @@ def _calc_bootstrap_iter(x, y, eval_x, lowess_kw):
 
     return sm.nonparametric.lowess(exog=sampled_x, endog=sampled_y, xvals=eval_x, **lowess_kw)
 
-def sma(df, columns, period_days=7):
-    """
-    Perform simple moving average filter over columns
-    """
-
-    # add missing days in index
-    df = df.resample('D').last()
-
-    df_ret = pd.DataFrame(index=df.index)
-
-    for col in tqdm(columns, unit='column'):
-        smooth = df[col].replace(0, np.nan).astype(float).rolling(7).mean()
-        df_ret = df_ret.join(smooth.rename(f'{col}_sma_{period_days}_days'))
-
-    return df_ret
-
 
 def lowess(df, columns, bootstrap_iters=10000, conf_interval=0.95, lowess_kw=None, clip_to_zero=True):
     """
