@@ -58,12 +58,12 @@ def rna_flow_per_capita_for_gemeente(jobs=config['n_jobs']):
     print('Converting RNA flow per municipality / safety-region to flow per capita')
     for col in tqdm(gmcols):
         # first select the columns of interest
-        df_sel = df_rwzi_gm_vr[['Date_measurement', col, 'population_attached_to_rwzi']]
+        df_sel = df_rwzi_gm_vr[['Date_measurement', col, 'population_attached_to_rwzi']].copy()
 
         # now divide RNA flow by population number
         df_sel[col] = df_sel[col] / df_sel['population_attached_to_rwzi']
 
-        # now sum RNA flow per day and divide by number of measurements on that day
+        # take the mean if theres more than one measurement
         df_gem = df_sel.groupby('Date_measurement').sum() / df_sel.groupby('Date_measurement').count()
 
         # join data into result dataframe

@@ -36,11 +36,11 @@ def lowess(df, columns, bootstrap_iters=10000, conf_interval=0.95, lowess_kw=Non
         y_raw = df[col].replace(0, np.nan).astype(float)
 
         # interpolate between datapoints linearly
-        y = y_raw.interpolate('linear')
+        y = y_raw.interpolate('linear', limit=14)  # interpolate max. number of limit days
 
         idx_start = y.first_valid_index()
         idx_end = y.last_valid_index()
-        y = y.loc[idx_start:idx_end]#.dropna()
+        y = y.loc[idx_start:idx_end].dropna()
         idx_sel = y.index
         y_series = y_raw.loc[idx_start:idx_end]
         y = y.values

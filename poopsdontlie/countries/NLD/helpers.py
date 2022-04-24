@@ -196,7 +196,7 @@ def map_merge_rwzi_gmvr(df_rwzi_gm_vr, jobs):
 def rna_flow_per_gmvr(df_rna_flow_gmvz, gmcols, vrcols):
     print('Splitting RNA flow per municipality / safety-region')
     for col in tqdm([*gmcols, *vrcols]):
-        df_rna_flow_gmvz[col] = df_rna_flow_gmvz['RNA_flow_per_100000'] / 100000 * df_rna_flow_gmvz['population_attached_to_rwzi'] * (
+        df_rna_flow_gmvz[col] = df_rna_flow_gmvz['RNA_flow_per_100000'] / 100_000 * df_rna_flow_gmvz['population_attached_to_rwzi'] * (
             df_rna_flow_gmvz[col] / df_rna_flow_gmvz['population_attached_to_rwzi'])
 
     cast_cols = ['RNA_flow_per_100000', 'population_attached_to_rwzi', *gmcols, *vrcols]
