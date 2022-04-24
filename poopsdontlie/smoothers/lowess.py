@@ -67,7 +67,7 @@ def lowess(df, columns, bootstrap_iters=2000, conf_interval=0.95, lowess_kw=None
         eval_x = x.copy()
 
         # consider all datapoints at ~1 month around it
-        frac = 1 / ((idx_end - idx_start) / np.timedelta64(2, 'W'))
+        frac = np.float64(1) / ((idx_end - idx_start) / np.timedelta64(3, 'W'))
         if frac > 1:
             # this means there is < 1 month of data
             frac = 1
@@ -90,27 +90,38 @@ def lowess(df, columns, bootstrap_iters=2000, conf_interval=0.95, lowess_kw=None
         for i in range(bootstrap_iters):
             smoothed_values[i] = retvals[i]
 
-        # Get the confidence interval
-        sorted_values = np.sort(smoothed_values, axis=0)
-        bound = int(bootstrap_iters * (1 - conf_interval) / 2)
-        bottom = sorted_values[bound - 1]
-        top = sorted_values[-bound]
+        # # Get the confidence interval
+        # sorted_values = np.sort(smoothed_values, axis=0)
+        # # some bootstrap iters return NaN, drop those
+        # sorted_values = sorted_values[~np.isnan(sorted_values)]
+        # count = len(sorted_values)
+        # bound = int(count * (1 - conf_interval) / 2)
+        # bottom = sorted_values[bound - 1]
+        # top = sorted_values[-bound]
+        #
+        # # DEBUG DEBUG DEBUG
+        # print(top)
+        # with open('/tmp/test.pickle', 'wb') as fh:
+        #     import pickle
+        #     pickle.dump(top, fh)
 
-        #quant = np.quantile(smoothed_values, [.025, .5, .975], axis=0)
+
+
+        quant = np.nanquantile(smoothed_values, [.025, .5, .975], axis=0)
 
         df_result = pd.DataFrame(index=[idx_start, idx_end])
         df_result = df_result.resample('D').last()
 
-        df_result[f'{col}_{int(conf_interval*100)}%_ci_bottom'] = bottom
-        #df_result[f'{col}_{int(conf_interval * 100)}%_ci_bottom'] = quant[0]
+        #df_result[f'{col}_{int(conf_interval*100)}%_ci_bottom'] = bottom
+        df_result[f'{col}_{int(conf_interval * 100)}%_ci_bottom'] = quant[0]
 
-        df_result[f'{col}_smoothed'] = smoothed
+        #df_result[f'{col}_smoothed'] = smoothed
         df_result = df_result.join(y_series.rename(f'{col}_raw'))
 
-        #df_result[f'{col}_{int(conf_interval * 100)}%_ci_median'] = quant[1]
+        df_result[f'{col}_median'] = quant[1]
 
-        df_result[f'{col}_{int(conf_interval*100)}%_ci_top'] = top
-        #df_result[f'{col}_{int(conf_interval * 100)}%_ci_top'] = quant[2]
+        #df_result[f'{col}_{int(conf_interval*100)}%_ci_top'] = top
+        df_result[f'{col}_{int(conf_interval * 100)}%_ci_top'] = quant[2]
 
         df_ret = df_ret.join(df_result)
 
