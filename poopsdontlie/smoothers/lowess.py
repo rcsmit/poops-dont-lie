@@ -78,10 +78,10 @@ def lowess(df, columns, bootstrap_iters=10000, conf_interval=0.95, lowess_kw=Non
 
         df_result = pd.DataFrame(index=[idx_start, idx_end])
         df_result = df_result.resample('D').last()
-        df_result[f'{col}_{int(conf_interval * 100)}%_ci_bottom'] = quant[0]
+        df_result.loc[idx_sel, f'{col}_{int(conf_interval * 100)}%_ci_bottom'] = quant[0]
         df_result = df_result.join(y_series.rename(f'{col}_raw'))
-        df_result[f'{col}_median'] = quant[1]
-        df_result[f'{col}_{int(conf_interval * 100)}%_ci_top'] = quant[2]
+        df_result.loc[idx_sel, f'{col}_median'] = quant[1]
+        df_result.loc[idx_sel, f'{col}_{int(conf_interval * 100)}%_ci_top'] = quant[2]
 
         df_ret = df_ret.join(df_result)
 
