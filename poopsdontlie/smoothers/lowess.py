@@ -33,7 +33,7 @@ def sma(df, columns, period_days=7):
     return df_ret
 
 
-def lowess(df, columns, bootstrap_iters=2000, conf_interval=0.95, lowess_kw=None, clip_to_zero=True):
+def lowess(df, columns, bootstrap_iters=10000, conf_interval=0.95, lowess_kw=None, clip_to_zero=True):
     """
     Perform Lowess regression and determine a confidence interval by bootstrap resampling
     """
