@@ -12,7 +12,7 @@ class EggInfoEx(egg_info):
         if not self.distribution.have_run.get('install', True):
             # `install` command is in progress, copy license
             self.mkpath(self.egg_info)
-            self.copy_file('LICENSE.md', self.egg_info)
+            self.copy_file('LICENSE', self.egg_info)
 
         egg_info.run(self)
 
@@ -26,7 +26,7 @@ with open("README.md", "r") as fh:
 setup(
     name='poops-dont-lie',
     version='1',
-    license_files = ('LICENSE.md', ),
+    license_files = ('LICENSE', ),
     cmdclass = {'egg_info': EggInfoEx},
     description='COVID-19 RNA flow per ML of sewage per 100k population dataset',
     long_description=long_description,
