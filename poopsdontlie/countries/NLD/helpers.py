@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import warnings
 
 
@@ -241,3 +242,12 @@ def get_df_rwzi_2021():
     df_rwzi_2021 = download_awzi_population_mappings_2021()
 
     return df_rwzi_2021
+
+
+@cached_results(key='get_geodata_gemeentes', invalidate_after=invalidate_beginning_of_next_month(), cache_level='backend')
+def get_geodata_gemeentes():
+    # Haal de kaart met gemeentegrenzen op van PDOK
+    geodata_url = 'https://geodata.nationaalgeoregister.nl/cbsgebiedsindelingen/wfs?request=GetFeature&service=WFS&version=2.0.0&typeName=cbs_gemeente_2021_gegeneraliseerd&outputFormat=json'
+    df_gemeentegrenzen = gpd.read_file(geodata_url)
+
+    return df_gemeentegrenzen

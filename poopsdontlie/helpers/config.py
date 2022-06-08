@@ -17,6 +17,7 @@ default_config = {
     'cachedir': user_cache_dir(appname),
     'remote_cache_url': 'https://github.com/Sikerdebaard/poops-dont-lie-data/raw/main/data/',
     'n_jobs': psutil.cpu_count(),
+    'bootstrap_iters': 50,
 }
 
 
@@ -34,3 +35,7 @@ if not config_file.is_file():
 
 with open(config_file, 'r') as fh:
     config = load(fh, Loader=Loader)
+
+for k, v in default_config.items():
+    if k not in config:
+        config[k] = v

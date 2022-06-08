@@ -1,4 +1,4 @@
-from poopsdontlie.countries.NLD.helpers import download_sewage_data, get_rwzi_gmvm_mapped_data, rivm_update_time
+from poopsdontlie.countries.NLD.helpers import download_sewage_data, get_rwzi_gmvm_mapped_data, rivm_update_time, get_geodata_gemeentes
 from poopsdontlie.helpers.cache import cached_results, invalidate_after_time_for_tz
 from poopsdontlie.helpers import config
 from tqdm.auto import tqdm
@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 import pandas as pd
 import numpy as np
 
-from poopsdontlie.smoothers.lowess import lowess
+from poopsdontlie.smoothers.lowess import lowess_per_col, lowess_from_median
 
 
 @cached_results(
@@ -39,7 +39,7 @@ def rna_flow_per_capita_for_veiligheidsregio(jobs=config['n_jobs']):
 def smoothed_rna_flow_per_capita_for_veiligheidsregio():
     df = rna_flow_per_capita_for_veiligheidsregio()
 
-    df_smooth = lowess(df, df.columns)
+    df_smooth = lowess_per_col(df, df.columns)
 
     return df_smooth
 
@@ -83,7 +83,7 @@ def rna_flow_per_capita_for_gemeente(jobs=config['n_jobs']):
 def smoothed_rna_flow_per_capita_for_gemeente():
     df = rna_flow_per_capita_for_gemeente()
 
-    df_smooth = lowess(df, df.columns)
+    df_smooth = lowess_per_col(df, df.columns)
 
     return df_smooth
 
@@ -119,7 +119,7 @@ def rna_flow_per_capita_for_rwzi():
 def smoothed_rna_flow_per_capita_for_rwzi():
     df = rna_flow_per_capita_for_rwzi()
 
-    df_smooth = lowess(df, df.columns)
+    df_smooth = lowess_per_col(df, df.columns)
 
     return df_smooth
 
@@ -131,3 +131,17 @@ def smoothed_rna_flow_per_capita_for_rwzi():
 )
 def rna_flow_per_100k_people_for_rwzi():
     return download_sewage_data()
+
+
+@cached_results(
+    key='smoothed_rna_flow_per_capita_national_level',
+    invalidate_after=invalidate_after_time_for_tz(*rivm_update_time),
+    cache_level='smoothed_api_result'
+)
+def smoothed_rna_flow_per_capita_national_level():
+    # get RWZI data and cast to float64 for easier processing
+    df_rwzi = rna_flow_per_capita_for_rwzi().astype(pd.Float64Dtype())
+
+    df_smooth = lowess_from_median(df_rwzi)
+
+    return df_smooth
