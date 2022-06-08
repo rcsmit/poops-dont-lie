@@ -41,10 +41,11 @@ def _merge_lowess_worker_results(index, retvals):
     for i in tqdm(range(len(retvals))):
         for j in range(len(retvals[i])):
             df[f'iter_{counter}'] = retvals[i][j]
-            df = df.copy()
-            counter += 1
+            #df = df.copy()
+        counter += 1
 
-    return df
+    # send defragmented version of dataframe
+    return df.copy()
 
 
 def _bootstrap_quantiles(df_results, conf_interval, bottom_col, top_col):
