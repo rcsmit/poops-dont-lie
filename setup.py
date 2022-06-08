@@ -50,7 +50,7 @@ setup(
         'pycountry>=22.3.5',
         'statsmodels>=0.13.2',
         'geopandas>=0.10.2',
-        'scipy>=1.22.3',
+        'scipy>=1.8.0',
     ],
     entry_points={
         'console_scripts': [
