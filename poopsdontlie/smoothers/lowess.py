@@ -104,7 +104,7 @@ def _bootstrap_ci_from_std(index, bootstrap_metric_std, test_metric, bottom_col,
     result = np.empty((len(bootstrap_metric_std), 2))
     for i in tqdm(range(len(bootstrap_metric_std))):
         if pd.isna(test_metric[i]):
-            result[i, :] = [pd.NA, pd.NA]
+            result[i, :] = [np.NAN, np.NAN]
 
         result[i, :] = st.norm.interval(alpha, loc=test_metric[i], scale=bootstrap_metric_std[i])
 
