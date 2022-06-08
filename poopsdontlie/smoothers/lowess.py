@@ -1,4 +1,5 @@
 import random
+import warnings
 
 import pandas as pd
 import statsmodels.api as sm
@@ -38,10 +39,26 @@ def _merge_lowess_worker_results(index, retvals):
 
     print('Merging lowess worker results')
 
+    # import pickle
+    # with open('/tmp/test.pickle', 'wb') as fh:
+    #     pickle.dump(retvals, fh)
+    #
+    # raise SystemExit()
+
+    # ignore fragmentation error
+    #warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
     for i in tqdm(range(len(retvals))):
-        for j in range(len(retvals[i])):
-            df[f'iter_{counter}'] = retvals[i][j]
-            counter += 1
+        df_res = pd.DataFrame(retvals[i]).T
+        df_res.index = index
+        df_res.columns = [f'{i}_{x}' for x in df_res.columns]
+        df = df.join(df_res)
+        # for j in range(len(retvals[i])):
+        #     df[f'iter_{counter}'] = retvals[i][j]
+        #     counter += 1
+
+    # enable performance warnings
+    #warnings.simplefilter(action='default', category=pd.errors.PerformanceWarning)
 
     # send defragmented version of dataframe
     return df.copy()
@@ -87,7 +104,7 @@ def _bootstrap_ci_from_std(index, bootstrap_metric_std, test_metric, bottom_col,
     result = np.empty((len(bootstrap_metric_std), 2))
     for i in tqdm(range(len(bootstrap_metric_std))):
         if pd.isna(test_metric[i]):
-            result[i, :] = [np.NA, np.NA]
+            result[i, :] = [pd.NA, pd.NA]
 
         result[i, :] = st.norm.interval(alpha, loc=test_metric[i], scale=bootstrap_metric_std[i])
 
