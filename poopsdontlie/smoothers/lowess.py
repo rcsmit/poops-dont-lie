@@ -33,34 +33,20 @@ def _lowess_worker_with_func_resampler(iters, df, func, lowess_kw):
     return retvals
 
 
-def _merge_lowess_worker_results(index, retvals):
-    df = pd.DataFrame(index=index)
-    counter = 0
-
+def _merge_lowess_worker_results(index, retvals, n_jobs):
     print('Merging lowess worker results')
 
-    # import pickle
-    # with open('/tmp/test.pickle', 'wb') as fh:
-    #     pickle.dump(retvals, fh)
-    #
-    # raise SystemExit()
+    l = len(retvals)
+    merge_lambda = lambda retval, prefix: pd.DataFrame(retval).T.add_prefix(prefix)
 
-    # ignore fragmentation error
-    #warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+    with tqdm_joblib(tqdm(total=l, unit=' merge workers finished', leave=False)) as progress_bar:
+        dfs = Parallel(n_jobs=n_jobs)(
+            delayed(merge_lambda)(retvals[i], f'{i}_') for i in range(l)
+        )
 
-    for i in tqdm(range(len(retvals))):
-        df_res = pd.DataFrame(retvals[i]).T
-        df_res.index = index
-        df_res.columns = [f'{i}_{x}' for x in df_res.columns]
-        df = df.join(df_res)
-        # for j in range(len(retvals[i])):
-        #     df[f'iter_{counter}'] = retvals[i][j]
-        #     counter += 1
+    df = pd.concat(dfs, axis=1)
+    df.index = index
 
-    # enable performance warnings
-    #warnings.simplefilter(action='default', category=pd.errors.PerformanceWarning)
-
-    # send defragmented version of dataframe
     return df.copy()
 
 
@@ -139,7 +125,7 @@ def lowess_from_median(df, bootstrap_iters=config['bootstrap_iters'], conf_inter
     # calculate the median
     median = _lowess_on_df(df.quantile(.5, axis=1), lowess_kw)
 
-    df_results = _merge_lowess_worker_results(df.index, retvals)
+    df_results = _merge_lowess_worker_results(df.index, retvals, n_jobs)
 
     colnames = {
         'bottom_col': f'median_{conf_interval * 100:0.0f}_perc_ci_bottom',
@@ -210,7 +196,7 @@ def lowess_per_col(df, columns, bootstrap_iters=config['bootstrap_iters'], conf_
                 delayed(_lowess_worker_with_func_resampler)(iters[i], df_sel, resample_lambda, local_run_lowess_kw) for i in range(n_jobs)
             )
 
-        df_results = _merge_lowess_worker_results(df_sel.index, retvals)
+        df_results = _merge_lowess_worker_results(df_sel.index, retvals, n_jobs)
 
         colnames = {
             'bottom_col': f'{col}_lowess_{conf_interval * 100:0.0f}_perc_ci_bottom',
