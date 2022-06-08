@@ -1,5 +1,5 @@
 import random
-import warnings
+#import warnings
 
 import pandas as pd
 import statsmodels.api as sm
@@ -74,7 +74,7 @@ def _bootstrap_quantiles(df_results, conf_interval, bottom_col, top_col):
     return df_results
 
 
-def _quantile_resampling(df, q=.5, iters=100, replace=True):
+def _quantile_resampling(df, q=.5, iters=10, replace=True):
     df_res = pd.DataFrame(index=range(df.shape[0]))
 
     for i in range(iters):
