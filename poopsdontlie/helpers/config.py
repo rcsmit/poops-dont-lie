@@ -17,7 +17,7 @@ default_config = {
     'cachedir': user_cache_dir(appname),
     'remote_cache_url': 'https://github.com/Sikerdebaard/poops-dont-lie-data/raw/main/data/',
     'n_jobs': psutil.cpu_count(),
-    'bootstrap_iters': 5_000,
+    'bootstrap_iters': 1_000,
 }
 
 
