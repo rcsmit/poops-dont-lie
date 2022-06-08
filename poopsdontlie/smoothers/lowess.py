@@ -11,19 +11,6 @@ from poopsdontlie.helpers import config
 from poopsdontlie.helpers.joblib import tqdm_joblib
 
 
-# def _numpy_df_resampler(df, replace=True):
-#     sample = np.random.choice(df.shape[0], df.shape[0], replace=replace)
-#     sampled_df = df.iloc[sample]
-#
-#     return sampled_df
-
-# def _calc_bootstrap_iter_random_choice(x, y, eval_x, lowess_kw):
-#     sample = np.random.choice(len(x), len(x), replace=True)
-#     sampled_x = x[sample]
-#     sampled_y = y[sample]
-#
-#     return sm.nonparametric.lowess(exog=sampled_x, endog=sampled_y, xvals=eval_x, **lowess_kw)
-
 def _lowess_on_df(resampled, lowess_kw):
     x = list(range(resampled.shape[0]))
     y = resampled.values.astype(float)
@@ -49,7 +36,9 @@ def _merge_lowess_worker_results(index, retvals):
     df = pd.DataFrame(index=index)
     counter = 0
 
-    for i in range(len(retvals)):
+    print('Merging lowess worker results')
+
+    for i in tqdm(range(len(retvals))):
         for j in range(len(retvals[i])):
             df[f'iter_{counter}'] = retvals[i][j]
             df = df.copy()
@@ -93,8 +82,10 @@ def _bootstrap_ci_from_std(index, bootstrap_metric_std, test_metric, bottom_col,
 
     df_res = pd.DataFrame(index=index)
 
+    print('Calculating bootstrap CIs')
+
     result = np.empty((len(bootstrap_metric_std), 2))
-    for i in range(len(bootstrap_metric_std)):
+    for i in tqdm(range(len(bootstrap_metric_std))):
         if pd.isna(test_metric[i]):
             result[i, :] = [np.NA, np.NA]
 
@@ -138,14 +129,7 @@ def lowess_from_median(df, bootstrap_iters=config['bootstrap_iters'], conf_inter
         'top_col': f'median_{conf_interval * 100:0.0f}_perc_ci_top',
     }
 
-    #df_results = _bootstrap_quantiles(df_results, conf_interval, **colnames)
     df_results = _bootstrap_ci_from_std(df_results.index, df_results.std(axis=1).values, median, alpha=conf_interval, **colnames)
-
-    # samples = df.quantile(.5, axis=1)
-    # x = samples.index.values.astype(int)
-    # y = samples.values.astype(float)
-    # eval_x = x.copy()
-    # median = sm.nonparametric.lowess(exog=x, endog=y, xvals=eval_x, frac=frac)
 
     df_results['median'] = median
 
@@ -172,31 +156,11 @@ def lowess_per_col(df, columns, bootstrap_iters=config['bootstrap_iters'], conf_
     print('Smoothing using lowess and generating 95% CI by bootstrap resampling')
 
     for col in tqdm(columns, unit='column'):
-        if 'GM0148' not in col:
-            continue
-
-        # y_raw = df[col].replace(0, np.nan).astype(float)
-        #
-        # # interpolate between datapoints linearly
-        # y = y_raw.interpolate('linear', limit=14)  # interpolate max. number of limit days
-        #
-
         idx_start = df[col].first_valid_index()
         idx_end = df[col].last_valid_index()
 
         df_sel = df[col].loc[idx_start:idx_end].astype(float)
         df_sel = df_sel.interpolate('linear', limit=14)
-        #df_sel = df_sel.sort_index()
-
-        # y = y.loc[idx_start:idx_end].dropna()
-        # idx_sel = y.index
-        # #y_series = y_raw.loc[idx_start:idx_end]
-        # y = y.values
-        #
-        # x = idx_sel.map(lambda x: (x - idx_sel[0]).days)
-        #
-        # # evaluate over all days between idx_start and idx_end
-        # eval_x = x.copy()
 
         # consider all datapoints at 3 weeks around it
         frac = np.float64(1) / ((idx_end - idx_start) / np.timedelta64(3, 'W'))
@@ -211,17 +175,9 @@ def lowess_per_col(df, columns, bootstrap_iters=config['bootstrap_iters'], conf_
         if 'frac' not in local_run_lowess_kw:
             local_run_lowess_kw['frac'] = frac
 
-        # x = df.index.values.astype(int)
-        # eval_x = x.copy()
-        # y = df[col].astype(float).interpolate('linear', limit=14).values
-        # # run lowess smoother
-        # smoothed = sm.nonparametric.lowess(exog=x, endog=y, xvals=eval_x, **local_run_lowess_kw)
 
         smoothed = _lowess_on_df(df_sel, local_run_lowess_kw)
-        #smoothed = _lowess_on_df(_quantile_resampling(df_sel, q=.5, iters=1000), local_run_lowess_kw)
 
-        #resample_lambda = lambda df_l: _quantile_resampling(df_l)
-        #resample_lambda = lambda df_l: _quantile_resampling(df_l, q=None)
         resample_lambda = _quantile_resampling
 
         n_jobs = config['n_jobs']
@@ -233,9 +189,6 @@ def lowess_per_col(df, columns, bootstrap_iters=config['bootstrap_iters'], conf_
         # Perform bootstrap resampling of the data
         # and  evaluate the smoothing at points
         with tqdm_joblib(tqdm(total=n_jobs, unit=' bootstrap resampling workers finished', leave=False)) as progress_bar:
-            #retvals = Parallel(n_jobs=config['n_jobs'])(
-            #    delayed(_calc_bootstrap_iter_random_choice)(x, y, eval_x, local_run_lowess_kw) for i in range(bootstrap_iters)
-            #)
             retvals = Parallel(n_jobs=n_jobs)(
                 delayed(_lowess_worker_with_func_resampler)(iters[i], df_sel, resample_lambda, local_run_lowess_kw) for i in range(n_jobs)
             )
@@ -248,9 +201,6 @@ def lowess_per_col(df, columns, bootstrap_iters=config['bootstrap_iters'], conf_
         }
 
         df_results = _bootstrap_ci_from_std(df_results.index, df_results.std(axis=1).values, smoothed, alpha=conf_interval, **colnames)
-
-        #smoothed = df_results.quantile(.5, axis=1).T
-        #df_results = _bootstrap_quantiles(df_results, conf_interval, **colnames)
 
         df_results[f'{col}_lowess'] = smoothed
 

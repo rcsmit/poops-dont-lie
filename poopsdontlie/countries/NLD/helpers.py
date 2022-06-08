@@ -157,32 +157,48 @@ def get_rwzi_mappings(measurement_date, rwzi_number, idx, df_rwzi_2020, vrcols_2
     return ret
 
 
+def _rwzi_mappings_worker(rows, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021):
+    retvals = []
+    for idx, row in rows.iterrows():
+        retvals.append(get_rwzi_mappings(row['Date_measurement'], row['RWZI_AWZI_code'], idx, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021))
+
+    return retvals
+
+
 @cached_results(key='merged_mapping_rwzi_gmvr', invalidate_after=invalidate_after_time_for_tz(*rivm_update_time), cache_level='backend')
 def map_merge_rwzi_gmvr(df_rwzi_gm_vr, jobs):
     df_rwzi_2021 = get_df_rwzi_2021()
     df_rwzi_2020, vrcols_2020, gmcols_2020 = get_df_rwzi_2020()
 
+    chunksize = 300
+    chunks = np.array_split(df_rwzi_gm_vr, np.ceil(df_rwzi_gm_vr.shape[0] / chunksize))
+
     print('Map rwzi data to municipalities / safety-regions')
-    with tqdm_joblib(tqdm(total=df_rwzi_gm_vr.shape[0], unit='rows')) as progress_bar:
+    with tqdm_joblib(tqdm(total=len(chunks), unit='runner tasks')) as progress_bar:
+        # retvals = Parallel(n_jobs=jobs)(
+        #     delayed(get_rwzi_mappings)(row['Date_measurement'], row['RWZI_AWZI_code'], idx, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021) for idx, row in df_rwzi_gm_vr.iterrows()
+        # )
         retvals = Parallel(n_jobs=jobs)(
-            delayed(get_rwzi_mappings)(row['Date_measurement'], row['RWZI_AWZI_code'], idx, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021) for idx, row in df_rwzi_gm_vr.iterrows()
+            delayed(_rwzi_mappings_worker)(rows, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021) for rows in chunks
         )
+
 
     print('Merging mapped results')
 
     # ignore fragmentation error
     warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-    for r in tqdm(retvals):
-        assert r is not None
+    for i in tqdm(retvals):
+        for r in i:
+            assert r is not None
 
-        idx = r['idx']
-        df_rwzi_gm_vr.at[idx, 'population_attached_to_rwzi'] = r['population_size']
+            idx = r['idx']
+            df_rwzi_gm_vr.at[idx, 'population_attached_to_rwzi'] = r['population_size']
 
-        for k, v in r['GM'].items():
-            df_rwzi_gm_vr.at[idx, k] = v
+            for k, v in r['GM'].items():
+                df_rwzi_gm_vr.at[idx, k] = v
 
-        for k, v in r['VR'].items():
-            df_rwzi_gm_vr.at[idx, k] = v
+            for k, v in r['VR'].items():
+                df_rwzi_gm_vr.at[idx, k] = v
 
     # defrag the table
     df_rwzi_gm_vr = df_rwzi_gm_vr.copy()
