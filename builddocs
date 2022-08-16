@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cd doc/md
+./build
+cd ../../
+cp ./doc/md/README.md .
