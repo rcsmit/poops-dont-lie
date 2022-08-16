@@ -8,6 +8,6 @@ F=01_TOC.md; [ ! -f ./$F ] || rm $F
 pandoc -s -f gfm -t markdown --toc --data-dir=. --template toc-only *.md > 01_TOC.md
 
 # concat all MD files into README.md
-pandoc -f gfm -t gfm --data-dir=. --strip-comments --filter=pandoc-manubot-cite --citeproc *.md > README.md
+pandoc -f gfm -t gfm --data-dir=. --strip-comments *.md > README.md
 #pandoc -f gfm --data-dir=. --strip-comments -s -t json *.md | pandoc-manubot-cite json | pandoc-citeproc | pandoc -s -f json -t gfm > README.md
 #pandoc -f gfm -t gfm --data-dir=. --strip-comments --filter=pandoc-manubot-cite *.md > README.md

@@ -3,14 +3,13 @@
 A standardization initiative for SARS-CoV-2 wastewater data processing,
 analysis and presentation.
 
-- [💩 Poops don't lie](#-poops-dont-lie){#toc--poops-dont-lie}
-  - [Introduction](#introduction){#toc-introduction}
-  - [Supported regions and
-    countries](#supported-regions-and-countries){#toc-supported-regions-and-countries}
-  - [How to participate](#how-to-participate){#toc-how-to-participate}
-  - [License and academic
-    use](#license-and-academic-use){#toc-license-and-academic-use}
-  - [References](#references){#toc-references}
+  - [💩 Poops don't lie](#-poops-dont-lie)
+      - [Introduction](#introduction)
+      - [Supported regions and
+        countries](#supported-regions-and-countries)
+      - [How to participate](#how-to-participate)
+      - [License and academic use](#license-and-academic-use)
+      - [References](#references)
 
 ## Introduction
 
@@ -26,8 +25,8 @@ The list of supported regions and countries is as follows:
 
 **Countries:**
 
-- Netherlands: wastewater installations, national, municipal,
-  safety-region
+  - Netherlands: wastewater installations, national, municipal,
+    safety-region
 
 ## How to participate
 
@@ -41,7 +40,8 @@ For academic use, use a presistent copy from
 
 Please cite:
 
-`Thomas Phil (2022). Sikerdebaard/poops-dont-lie: poops-dont-lie v1 (Version v1). Zenodo. https://doi.org/10.5281/zenodo.6997551`
+`Thomas Phil (2022). Sikerdebaard/poops-dont-lie: poops-dont-lie v1
+(Version v1). Zenodo. https://doi.org/10.5281/zenodo.6997551`
 
 ## References
 
