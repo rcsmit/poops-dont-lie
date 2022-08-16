@@ -5,4 +5,5 @@
     -   [Supported regions and
         countries](#supported-regions-and-countries)
     -   [How to participate](#how-to-participate)
+    -   [License and academic use](#license-and-academic-use)
 
