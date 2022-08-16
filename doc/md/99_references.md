@@ -7,3 +7,5 @@ Please cite:
 
 ```Thomas Phil (2022). Sikerdebaard/poops-dont-lie: poops-dont-lie v1 (Version v1). Zenodo. https://doi.org/10.5281/zenodo.6997551```
 
+## References
+@doi:10.1016/j.coesh.2022.100363
