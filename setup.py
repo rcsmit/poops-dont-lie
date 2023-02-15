@@ -46,7 +46,7 @@ setup(
         'requests>=2.22.0',
         'pyyaml>=5.3.1',
         'appdirs>=1.4.4',
-        'cleo>=0.8.1',
+        'cleo>=0.8.1,<2.0',
         'pycountry>=22.3.5',
         'statsmodels>=0.13.2',
         'geopandas>=0.10.2',
