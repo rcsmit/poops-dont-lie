@@ -23,7 +23,7 @@ def _lowess_on_df(resampled, lowess_kw):
 
 def _lowess_worker_with_func_resampler(iters, df, func, lowess_kw):
     retvals = []
-    for i in range(iters):
+    for _ in range(iters):
         resampled = func(df)
 
         res = _lowess_on_df(resampled, lowess_kw)
@@ -168,12 +168,7 @@ def lowess_per_col(df, columns, bootstrap_iters=config['bootstrap_iters'], conf_
         # consider all datapoints at 3 weeks around it
         frac = np.float64(1) / ((idx_end - idx_start) / np.timedelta64(3, 'W'))
 
-        if frac > 1:
-            # this means there is < 3W of data
-            # we should probably ignore the data if this is the case
-            # but for now set frac to 1 (use all samples)
-            frac = 1
-
+        frac = min(frac, 1)
         local_run_lowess_kw = {**lowess_kw}
         if 'frac' not in local_run_lowess_kw:
             local_run_lowess_kw['frac'] = frac

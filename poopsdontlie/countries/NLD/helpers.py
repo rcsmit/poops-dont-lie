@@ -34,9 +34,7 @@ def download_awzi_population_mappings_2020():
 def download_awzi_population_mappings_2021():
     mapping_excel = 'https://www.cbs.nl/-/media/_excel/2021/39/20210930-aantal-inwoners-per-verzorgingsgebied-2021.xlsx'
     sheet = 'Tabel 1'
-    df_rwzi = pd.read_excel(download_file_with_progressbar(mapping_excel), sheet)
-
-    return df_rwzi
+    return pd.read_excel(download_file_with_progressbar(mapping_excel), sheet)
 
 
 @cached_results(key='rivm_sewage_data', invalidate_after=invalidate_after_time_for_tz(*rivm_update_time), cache_level='backend')
@@ -55,9 +53,7 @@ def download_sewage_data():
 def get_vals_for_non_null_cols(cols, df):
     sel = ~df[cols].isnull()
     sel = sel.columns[sel.iloc[0]]
-    sel = df[sel]
-
-    return sel
+    return df[sel]
 
 
 def gm_or_vr_to_dict_2020(df, popsize):
@@ -130,13 +126,19 @@ def get_rwzi_mappings_2021(measurement_date, rwzi_number, df_rwzi_2021):
     assert .99 <= df_vr['aandeel'].sum() <= 1.01
     assert .99 <= df_gm['aandeel'].sum() <= 1.01
 
-    ret = {
-        'population_size': int(round((df_vr['aantal'].sum() + df_gm['aantal'].sum()) / 2, 0)),
-        'GM': {row['regio_code']: row['aantal'] for idx, row in df_gm[['regio_code', 'aantal']].iterrows()},
-        'VR': {row['regio_code']: row['aantal'] for idx, row in df_vr[['regio_code', 'aantal']].iterrows()},
+    return {
+        'population_size': int(
+            round((df_vr['aantal'].sum() + df_gm['aantal'].sum()) / 2, 0)
+        ),
+        'GM': {
+            row['regio_code']: row['aantal']
+            for idx, row in df_gm[['regio_code', 'aantal']].iterrows()
+        },
+        'VR': {
+            row['regio_code']: row['aantal']
+            for idx, row in df_vr[['regio_code', 'aantal']].iterrows()
+        },
     }
-
-    return ret
 
 
 def get_rwzi_mappings(measurement_date, rwzi_number, idx, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021):
@@ -158,11 +160,18 @@ def get_rwzi_mappings(measurement_date, rwzi_number, idx, df_rwzi_2020, vrcols_2
 
 
 def _rwzi_mappings_worker(rows, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021):
-    retvals = []
-    for idx, row in rows.iterrows():
-        retvals.append(get_rwzi_mappings(row['Date_measurement'], row['RWZI_AWZI_code'], idx, df_rwzi_2020, vrcols_2020, gmcols_2020, df_rwzi_2021))
-
-    return retvals
+    return [
+        get_rwzi_mappings(
+            row['Date_measurement'],
+            row['RWZI_AWZI_code'],
+            idx,
+            df_rwzi_2020,
+            vrcols_2020,
+            gmcols_2020,
+            df_rwzi_2021,
+        )
+        for idx, row in rows.iterrows()
+    ]
 
 
 @cached_results(key='merged_mapping_rwzi_gmvr', invalidate_after=invalidate_after_time_for_tz(*rivm_update_time), cache_level='backend')
@@ -255,15 +264,11 @@ def get_df_rwzi_2020():
 
 @lru_cache()
 def get_df_rwzi_2021():
-    df_rwzi_2021 = download_awzi_population_mappings_2021()
-
-    return df_rwzi_2021
+    return download_awzi_population_mappings_2021()
 
 
 @cached_results(key='get_geodata_gemeentes', invalidate_after=invalidate_beginning_of_next_month(), cache_level='backend')
 def get_geodata_gemeentes():
     # Haal de kaart met gemeentegrenzen op van PDOK
     geodata_url = 'https://geodata.nationaalgeoregister.nl/cbsgebiedsindelingen/wfs?request=GetFeature&service=WFS&version=2.0.0&typeName=cbs_gemeente_2021_gegeneraliseerd&outputFormat=json'
-    df_gemeentegrenzen = gpd.read_file(geodata_url)
-
-    return df_gemeentegrenzen
+    return gpd.read_file(geodata_url)

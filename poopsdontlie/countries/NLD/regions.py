@@ -39,9 +39,7 @@ def rna_flow_per_capita_for_veiligheidsregio(jobs=config['n_jobs']):
 def smoothed_rna_flow_per_capita_for_veiligheidsregio():
     df = rna_flow_per_capita_for_veiligheidsregio()
 
-    df_smooth = lowess_per_col(df, df.columns)
-
-    return df_smooth
+    return lowess_per_col(df, df.columns)
 
 
 @cached_results(
@@ -83,9 +81,7 @@ def rna_flow_per_capita_for_gemeente(jobs=config['n_jobs']):
 def smoothed_rna_flow_per_capita_for_gemeente():
     df = rna_flow_per_capita_for_gemeente()
 
-    df_smooth = lowess_per_col(df, df.columns)
-
-    return df_smooth
+    return lowess_per_col(df, df.columns)
 
 
 @cached_results(
@@ -119,9 +115,7 @@ def rna_flow_per_capita_for_rwzi():
 def smoothed_rna_flow_per_capita_for_rwzi():
     df = rna_flow_per_capita_for_rwzi()
 
-    df_smooth = lowess_per_col(df, df.columns)
-
-    return df_smooth
+    return lowess_per_col(df, df.columns)
 
 
 @cached_results(
@@ -142,6 +136,4 @@ def smoothed_rna_flow_per_capita_national_level():
     # get RWZI data and cast to float64 for easier processing
     df_rwzi = rna_flow_per_capita_for_rwzi().astype(pd.Float64Dtype())
 
-    df_smooth = lowess_from_median(df_rwzi)
-
-    return df_smooth
+    return lowess_from_median(df_rwzi)

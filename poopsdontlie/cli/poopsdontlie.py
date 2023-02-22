@@ -46,10 +46,7 @@ class GenerateRemoteCache(Command):
         if self.option('no-cache'):
             config['cache'] = None
 
-        force_regen = False
-        if self.option('force-regen'):
-            force_regen = True
-
+        force_regen = bool(self.option('force-regen'))
         cache_gen(outdir, force_regen)
 
 
