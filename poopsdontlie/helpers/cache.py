@@ -257,9 +257,9 @@ class RemoteCache(CacheAdapter):
             return None
 
         dtype, parse_dates = self._filter_dtypes(meta['dtypes'])
-        df = pd.read_csv(local_csv_file, index_col=0, dtype=dtype, parse_dates=parse_dates)
-
-        return df
+        return pd.read_csv(
+            local_csv_file, index_col=0, dtype=dtype, parse_dates=parse_dates
+        )
 
     def _filter_dtypes(self, dtypes):
         typeret = {}
@@ -302,9 +302,12 @@ def reiinit_cache_config():
 
 
 def _cache_factory(force_init=False):
-    if not force_init and hasattr(_cache_factory, '_instance'):
-        if config['cache'] == _cache_factory._impl:
-            return _cache_factory._instance
+    if (
+        not force_init
+        and hasattr(_cache_factory, '_instance')
+        and config['cache'] == _cache_factory._impl
+    ):
+        return _cache_factory._instance
 
     cache_impl = config['cache']
     if cache_impl is None or cache_impl == '' or cache_impl.lower().strip() == 'none':
